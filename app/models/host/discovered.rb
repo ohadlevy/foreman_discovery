@@ -6,6 +6,9 @@ class Host::Discovered < ::Host::Base
   belongs_to :organization
   belongs_to :subnet
 
+  validates :mac, :uniqueness => true, :format => {:with => Net::Validations::MAC_REGEXP}, :presence => true
+  validates :ip, :format => {:with => Net::Validations::IP_REGEXP}, :uniqueness => true
+
   scoped_search :on => :name, :complete_value => true, :default_order => true
   scoped_search :on => :last_report, :complete_value => true
   scoped_search :on => :ip, :complete_value => true
@@ -21,7 +24,7 @@ class Host::Discovered < ::Host::Base
   # this seems like a rails bug, TODO: figure out whats really wrong here
   scope :list, lambda { where(:type => "Host::Discovered").includes(:model, :location, :organization) }
 
-  def self.importHostAndFacts facts
+  def self.import_host_and_facts facts
     raise(::Foreman::Exception.new(N_("Invalid facts, must be a Hash"))) unless facts.is_a?(Hash)
     fact_name = Setting[:discovery_fact] || 'macaddress'
     hostname   = facts[fact_name].try(:downcase).try(:gsub,/:/,'')
@@ -51,11 +54,11 @@ class Host::Discovered < ::Host::Base
     end
 
     h.save(:validate => false) if h.new_record?
-    state = h.importFacts(facts)
+    state = h.import_facts(facts)
     return h, state
   end
 
-  def importFacts facts
+  def import_facts facts
     # Discovered Hosts won't report in via puppet, so we can use that field to
     # record the last time it sent facts...
     self.last_report = Time.now
@@ -66,7 +69,7 @@ class Host::Discovered < ::Host::Base
     super + [:ip]
   end
 
-  def populateFieldsFromFacts facts = self.facts_hash
+  def populate_fields_from_facts facts = self.facts_hash
     importer = super
     self.subnet = Subnet.subnet_for(importer.ip)
     self.save
@@ -81,7 +84,7 @@ class Host::Discovered < ::Host::Base
       raise _("Could not get facts from proxy: %s") % e
     end
 
-    return self.class.importHostAndFacts facts
+    return self.class.import_host_and_facts facts
   end
 
   def self.model_name
