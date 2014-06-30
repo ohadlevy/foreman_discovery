@@ -7,6 +7,8 @@ module ForemanDiscovery
   #Thus, inherits from ::Rails::Engine and not from Rails::Engine
   class Engine < ::Rails::Engine
 
+    config.autoload_paths += Dir["#{config.root}/app/services"]
+
     # Load this before the Foreman config initializers, so that the Setting.descendants
     # list includes the plugin STI setting class
     initializer 'foreman_discovery.load_default_settings', :before => :load_config_initializers do |app|
